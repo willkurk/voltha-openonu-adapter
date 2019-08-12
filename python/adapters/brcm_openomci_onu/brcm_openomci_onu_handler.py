@@ -20,13 +20,14 @@ Broadcom OpenOMCI OLT/ONU adapter handler.
 
 import ast
 import structlog
+import time
 
 from collections import OrderedDict
 
 from twisted.internet import reactor, task
 from twisted.internet.defer import DeferredQueue, inlineCallbacks, returnValue, TimeoutError
-
 from heartbeat import HeartBeat
+
 from pyvoltha.adapters.extensions.alarms.onu.onu_active_alarm import OnuActiveAlarm
 from pyvoltha.adapters.extensions.kpi.onu.onu_pm_metrics import OnuPmMetrics
 from pyvoltha.adapters.extensions.kpi.onu.onu_omci_pm import OnuOmciPmMetrics
@@ -61,7 +62,6 @@ RC = ReasonCodes
 log = structlog.get_logger()
 
 _STARTUP_RETRY_WAIT = 20
-
 
 class BrcmOpenomciOnuHandler(object):
 
@@ -691,17 +691,21 @@ class BrcmOpenomciOnuHandler(object):
         self.log.debug('function-entry', onu_indication=onu_indication)
         self._onu_indication = onu_indication
 
-        yield self.core_proxy.device_state_update(self.device_id, oper_status=OperStatus.ACTIVATING,
+        try:        
+            yield self.core_proxy.device_state_update(self.device_id, oper_status=OperStatus.ACTIVATING,
                                                   connect_status=ConnectStatus.REACHABLE)
 
-        onu_device = yield self.core_proxy.get_device(self.device_id)
+            onu_device = yield self.core_proxy.get_device(self.device_id)
 
-        self.log.debug('starting-openomci-statemachine')
-        self._subscribe_to_events()
-        reactor.callLater(1, self._onu_omci_device.start)
-        onu_device.reason = "starting-openomci"
-        yield self.core_proxy.device_update(onu_device)
-        self._heartbeat.enabled = True
+            self.log.debug('starting-openomci-statemachine')
+            self._subscribe_to_events()
+            reactor.callLater(1, self._onu_omci_device.start)
+            self.log.debug('starting-openomci-set-reason')
+            onu_device.reason = "starting-openomci"
+            yield self.core_proxy.device_update(onu_device)
+            self._heartbeat.enabled = True
+        except Exception as err:
+            self.log.error(err)
 
     # Currently called each time there is an onu "down" indication from the olt handler
     # TODO: possibly other reasons to "update" from the olt?

@@ -21,17 +21,25 @@ This adapter does NOT support XPON
 """
 
 from twisted.internet import reactor, task
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.python import reflect
+from twisted.protocols import amp
+from ampoule import pool, util
+from ampoule import child
+
+import structlog
 
 from zope.interface import implementer
 
+from pyvoltha.common.utils.amphelpers import Activate, OMCIDevice, ProcessMessage, OMCIDeviceParam, OMCIAdapterParam, OMCIAdapter
 from pyvoltha.adapters.interface import IAdapterInterface
 from pyvoltha.adapters.iadapter import OnuAdapter
 from voltha_protos.adapter_pb2 import Adapter
 from voltha_protos.adapter_pb2 import AdapterConfig
 from voltha_protos.common_pb2 import LogLevel
-from voltha_protos.device_pb2 import DeviceType, DeviceTypes, Port, Image
+from voltha_protos.device_pb2 import Device, DeviceType, DeviceTypes, Port, Image
 from voltha_protos.health_pb2 import HealthStatus
+from voltha_protos.inter_container_pb2 import InterContainerMessage
 
 from pyvoltha.adapters.common.frameio.frameio import hexify
 from pyvoltha.adapters.extensions.omci.openomci_agent import OpenOMCIAgent, OpenOmciAgentDefaults
@@ -42,9 +50,9 @@ from brcm_openomci_onu_handler import BrcmOpenomciOnuHandler
 from omci.brcm_capabilities_task import BrcmCapabilitiesTask
 from omci.brcm_mib_sync import BrcmMibSynchronizer
 from copy import deepcopy
+from pyvoltha.common.utils.registry import registry
 
 log = structlog.get_logger()
-
 
 @implementer(IAdapterInterface)
 class BrcmOpenomciOnuAdapter(object):
@@ -60,11 +68,12 @@ class BrcmOpenomciOnuAdapter(object):
         )
     ]
 
-    def __init__(self, core_proxy, adapter_proxy, config):
+    def __init__(self, core_proxy, adapter_proxy, config, process_parameters):
         log.debug('function-entry', config=config)
         self.core_proxy = core_proxy
         self.adapter_proxy = adapter_proxy
         self.config = config
+        self.process_parameters = process_parameters
         self.descriptor = Adapter(
             id=self.name,
             vendor='Voltha project',
@@ -121,11 +130,28 @@ class BrcmOpenomciOnuAdapter(object):
     def change_master_state(self, master):
         raise NotImplementedError()
 
+    #@inlineCallbacks
     def adopt_device(self, device):
-        log.info('adopt_device', device_id=device.id)
-        self.devices_handlers[device.id] = BrcmOpenomciOnuHandler(self, device.id)
-        reactor.callLater(0, self.devices_handlers[device.id].activate, device)
-        return device
+        try:
+            log.info('adopt_device', device_id=device.id)
+            from twisted.python import log as logtwisted
+            logtwisted.startLogging(sys.stdout)
+
+            pp = pool.ProcessPool(OMCIDevice, min=1, max=1, recycleAfter=0)
+            log.debug("starting-openomci-process")
+            pp.start()
+            log.debug("activating-device", device_id=device.id)
+            self.process_parameters["args"] = registry('main').get_args()
+            process_adapter = OMCIAdapter(self.process_parameters, {})
+            pp.doWork(Activate, device=device, adapter=process_adapter)
+            #log.debug("Activate returned", result=result)
+            self.devices_handlers[device.id] = pp
+            #self.devices_handlers[device.id] = BrcmOpenomciOnuHandler(self, device.id)
+            ##reactor.callLater(0, self.devices_handlers[device.id].activate, device)
+            log.info("adopt_device_exit", device_id=device.id)
+            return device
+        except Exception as err:
+            log.error(err)
 
     def reconcile_device(self, device):
         log.info('reconcile-device', device_id=device.id)
@@ -249,13 +275,6 @@ class BrcmOpenomciOnuAdapter(object):
         ofp_port_info = self.devices_handlers[device.id].get_ofp_port_info(device, port_no)
         log.debug('get_ofp_port_info', device_id=device.id, ofp_port_info=ofp_port_info)
         return ofp_port_info
-
-    def process_inter_adapter_message(self, msg):
-        log.debug('process-inter-adapter-message', msg=msg)
-        # Unpack the header to know which device needs to handle this message
-        if msg.header:
-            handler = self.devices_handlers[msg.header.to_device_id]
-            handler.process_inter_adapter_message(msg)
 
     def create_interface(self, device, data):
         log.debug('create-interface', device_id=device.id)

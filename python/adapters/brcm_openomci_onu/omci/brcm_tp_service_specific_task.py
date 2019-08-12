@@ -22,6 +22,7 @@ from pyvoltha.adapters.extensions.omci.omci_defs import *
 from adapters.brcm_openomci_onu.uni_port import *
 from adapters.brcm_openomci_onu.pon_port \
     import BRDCM_DEFAULT_VLAN, TASK_PRIORITY, DEFAULT_TPID, DEFAULT_GEM_PAYLOAD
+import time
 
 OP = EntityOperations
 RC = ReasonCodes
@@ -471,6 +472,8 @@ class BrcmTpServiceSpecificTask(Task):
             self.check_status_and_state(results, 'set-extended-vlan-tagging-operation-configuration-data-table')
 
             self.deferred.callback("tech-profile-download-success")
+            millis = int(round(time.time() * 1000))
+            self.log("OMCI complete",millis=millis)
 
         except TimeoutError as e:
             self.log.warn('rx-timeout-2', e=e)

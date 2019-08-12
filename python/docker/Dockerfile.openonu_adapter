@@ -36,6 +36,9 @@ RUN if [ -n "$LOCAL_PROTOS" ] ; then \
     pip install /local_imports/voltha-protos/dist/*.tar.gz ; \
 fi
 
+COPY confluent_kafka-1.1.0-cp27-cp27mu-manylinux1_x86_64.whl /local_imports/
+RUN pip install /local_imports/confluent_kafka-1.1.0-cp27-cp27mu-manylinux1_x86_64.whl
+
 # Bundle app source
 RUN mkdir /voltha && touch /voltha/__init__.py
 RUN mkdir /voltha/adapters && touch /voltha/adapters/__init__.py

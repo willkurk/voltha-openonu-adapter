@@ -20,6 +20,7 @@
 import argparse
 import os
 import time
+import sys
 
 import arrow
 import yaml
@@ -356,9 +357,13 @@ class Main(object):
                 core_topic=self.core_topic,
                 my_listening_topic=self.listening_topic)
 
+            process_parameters={}
+            process_parameters["core_topic"] = self.core_topic
+            process_parameters["listening_topic"] = self.listening_topic
+
             self.adapter = BrcmOpenomciOnuAdapter(
                 core_proxy=self.core_proxy, adapter_proxy=self.adapter_proxy,
-                config=config)
+                config=config, process_parameters=process_parameters)
 
             self.adapter.start()
 
@@ -487,4 +492,5 @@ class Main(object):
 
 
 if __name__ == '__main__':
+    sys.path.insert(0, "/voltha/adapters")
     Main().start()
