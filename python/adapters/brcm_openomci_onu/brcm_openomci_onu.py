@@ -226,19 +226,7 @@ class BrcmOpenomciOnuAdapter(object):
                  pm_config=pm_config)
         handler = self.devices_handlers[device.id]
         handler.update_pm_config(device, pm_config)
-
-    def update_flows_bulk(self, device, flows, groups):
-        '''
-        log.info('bulk-flow-update', device_id=device.id,
-                  flows=flows, groups=groups)
-        '''
-        assert len(groups.items) == 0
-        handler = self.devices_handlers[device.id]
-        return handler.update_flow_table(device, flows.items)
-
-    def update_flows_incrementally(self, device, flow_changes, group_changes):
-        raise NotImplementedError()
-
+    
     def send_proxied_message(self, proxy_address, msg):
         log.debug('send-proxied-message', proxy_address=proxy_address, msg=msg)
 
@@ -272,11 +260,6 @@ class BrcmOpenomciOnuAdapter(object):
             handler.event_messages.put(msg)
         else:
             log.error("device-not-found")
-
-    def get_ofp_port_info(self, device, port_no):
-        ofp_port_info = self.devices_handlers[device.id].get_ofp_port_info(device, port_no)
-        log.debug('get_ofp_port_info', device_id=device.id, ofp_port_info=ofp_port_info)
-        return ofp_port_info
 
     def create_interface(self, device, data):
         log.debug('create-interface', device_id=device.id)
