@@ -131,17 +131,19 @@ class BrcmOpenomciOnuAdapter(object):
         raise NotImplementedError()
 
     #@inlineCallbacks
-    def adopt_device(self, device):
+    def adopt_device(self, device, offset):
         try:
             log.info('adopt_device', device_id=device.id)
             from twisted.python import log as logtwisted
             logtwisted.startLogging(sys.stdout)
-
+            import time
+            time.sleep(1+5*len(self.devices_handlers))
             pp = pool.ProcessPool(OMCIDevice, min=1, max=1, recycleAfter=0)
             log.debug("starting-openomci-process")
             pp.start()
             log.debug("activating-device", device_id=device.id)
             self.process_parameters["args"] = registry('main').get_args()
+            self.process_parameters["offset"] = offset
             process_adapter = OMCIAdapter(self.process_parameters, {})
             pp.doWork(Activate, device=device, adapter=process_adapter)
             #log.debug("Activate returned", result=result)

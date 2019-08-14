@@ -699,13 +699,14 @@ class BrcmOpenomciOnuHandler(object):
 
             self.log.debug('starting-openomci-statemachine')
             self._subscribe_to_events()
+            self.log.debug('starting-openomci-statemachine-subscribed')
             reactor.callLater(1, self._onu_omci_device.start)
             self.log.debug('starting-openomci-set-reason')
             onu_device.reason = "starting-openomci"
             yield self.core_proxy.device_update(onu_device)
             self._heartbeat.enabled = True
         except Exception as err:
-            self.log.error(err)
+            self.log.error("Exception:", err=err)
 
     # Currently called each time there is an onu "down" indication from the olt handler
     # TODO: possibly other reasons to "update" from the olt?
@@ -866,19 +867,26 @@ class BrcmOpenomciOnuHandler(object):
     # Called just before openomci state machine is started.  These listen for events from selected state machines,
     # most importantly, mib in sync.  Which ultimately leads to downloading the mib
     def _subscribe_to_events(self):
-        self.log.debug('function-entry')
+        try:
+            self.log.debug('function-entry')
 
-        # OMCI MIB Database sync status
-        bus = self._onu_omci_device.event_bus
-        topic = OnuDeviceEntry.event_bus_topic(self.device_id,
-                                               OnuDeviceEvents.MibDatabaseSyncEvent)
-        self._in_sync_subscription = bus.subscribe(topic, self.in_sync_handler)
+            # OMCI MIB Database sync status
+            bus = self._onu_omci_device.event_bus
+            self.log.debug('function-entry 1.1')
+            topic = OnuDeviceEntry.event_bus_topic(self.device_id,
+                                                   OnuDeviceEvents.MibDatabaseSyncEvent)
+            self.log.debug('function-entry 1.5')
+            self._in_sync_subscription = bus.subscribe(topic, self.in_sync_handler)
+            self.log.debug('function-entry 2')
 
-        # OMCI Capabilities
-        bus = self._onu_omci_device.event_bus
-        topic = OnuDeviceEntry.event_bus_topic(self.device_id,
-                                               OnuDeviceEvents.OmciCapabilitiesEvent)
-        self._capabilities_subscription = bus.subscribe(topic, self.capabilties_handler)
+            # OMCI Capabilities
+            bus = self._onu_omci_device.event_bus
+            topic = OnuDeviceEntry.event_bus_topic(self.device_id,
+                                                   OnuDeviceEvents.OmciCapabilitiesEvent)
+            self._capabilities_subscription = bus.subscribe(topic, self.capabilties_handler)
+            self.log.debug('function-entry 3')
+        except Exception as err:
+            self.log.error(err)
 
     # Called when the mib is in sync
     def in_sync_handler(self, _topic, msg):
