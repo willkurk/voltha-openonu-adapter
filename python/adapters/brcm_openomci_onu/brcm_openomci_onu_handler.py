@@ -1003,7 +1003,7 @@ class BrcmOpenomciOnuHandler(object):
 
         if self._dev_info_loaded:
             if device.admin_state == AdminState.PREPROVISIONED or device.admin_state == AdminState.ENABLED:
-
+                this = self
                 @inlineCallbacks
                 def success(_results):
                     self.log.info('mib-download-success', _results=_results)
@@ -1015,6 +1015,12 @@ class BrcmOpenomciOnuHandler(object):
                     yield self.core_proxy.device_update(device)
                     self._mib_download_task = None
                     yield self.onu_active_alarm()
+                    self.log.info("mib-download-pop-from-queue")
+                    self.log.info("data", ad = this.adapter)
+                    self.log.info("data", func = this.adapter.mibSyncComplete)
+                    this.adapter.mibSyncComplete()
+                    self.log.info("mib-download-popped-from-queue") 
+
                 
                 @inlineCallbacks
                 def failure(_reason):
@@ -1031,10 +1037,7 @@ class BrcmOpenomciOnuHandler(object):
                 self._deferred.addCallbacks(success, failure)
             else:
                 self.log.info('admin-down-disabling')
-                self.disable(device)
-                self.log.info("mib-download-pop-from-queue")
-                self.adapter.mibSyncComplete()
-
+                self.disable(device) 
         else:
             self.log.info('device-info-not-loaded-skipping-mib-download')
 

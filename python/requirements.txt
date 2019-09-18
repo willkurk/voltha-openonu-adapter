@@ -64,3 +64,4 @@ python-consul==0.6.2
 afkak==3.0.0.dev20181106
 voltha-protos>=0.1.4
 pyvoltha==0.2.4
+ptvsd==4.3.2
