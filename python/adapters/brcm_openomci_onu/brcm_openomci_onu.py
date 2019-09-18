@@ -81,6 +81,12 @@ class BrcmOpenomciOnuAdapter(object):
             config=AdapterConfig(log_level=LogLevel.INFO)
         )
         self.devices_handlers = dict()
+        self.process = 1
+        self.max_processes = 4
+        self.process_device_count = 0
+        self.process_device_limit = 8
+        self.processes = {}
+        self.process_device = None
         self.device_handler_class = BrcmOpenomciOnuHandler
 
         # Customize OpenOMCI for Broadcom ONUs
@@ -137,17 +143,30 @@ class BrcmOpenomciOnuAdapter(object):
             from twisted.python import log as logtwisted
             logtwisted.startLogging(sys.stdout)
             import time
-            time.sleep(1+5*len(self.devices_handlers))
-            pp = pool.ProcessPool(OMCIDevice, min=1, max=1, recycleAfter=0)
-            log.debug("starting-openomci-process")
-            pp.start()
+            #time.sleep(1+5*len(self.devices_handlers))
+            #time.sleep(5)
+            if not self.process in self.processes.keys():
+                self.process_device = pool.ProcessPool(OMCIDevice, min=1, max=1, recycleAfter=0)
+                log.debug("starting-openomci-process")
+                self.process_device.start()
+                self.processes[self.process] = self.process_device
+            else:
+                self.process_device = self.processes[self.process]
+            #self.process_device_count += 1
+            #if self.process_device_count == self.process_device_limit:
+            #    self.process_device_count = 0
             log.debug("activating-device", device_id=device.id)
             self.process_parameters["args"] = registry('main').get_args()
             self.process_parameters["offset"] = offset
             process_adapter = OMCIAdapter(self.process_parameters, {})
-            pp.doWork(Activate, device=device, adapter=process_adapter)
+            self.process_device.doWork(Activate, device=device, adapter=process_adapter)
             #log.debug("Activate returned", result=result)
-            self.devices_handlers[device.id] = pp
+            self.devices_handlers[device.id] = self.process_device
+            self.process += 1
+            if self.process > self.max_processes:
+                self.process = 1
+            #if self.processes == self.max_processes and self.process_device_count == 0:
+            #    self.device_queue.append((device, self.process_parameters))
             #self.devices_handlers[device.id] = BrcmOpenomciOnuHandler(self, device.id)
             ##reactor.callLater(0, self.devices_handlers[device.id].activate, device)
             log.info("adopt_device_exit", device_id=device.id)

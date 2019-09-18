@@ -1015,7 +1015,7 @@ class BrcmOpenomciOnuHandler(object):
                     yield self.core_proxy.device_update(device)
                     self._mib_download_task = None
                     yield self.onu_active_alarm()
-
+                
                 @inlineCallbacks
                 def failure(_reason):
                     self.log.warn('mib-download-failure-retrying', _reason=_reason)
@@ -1032,6 +1032,9 @@ class BrcmOpenomciOnuHandler(object):
             else:
                 self.log.info('admin-down-disabling')
                 self.disable(device)
+                self.log.info("mib-download-pop-from-queue")
+                self.adapter.mibSyncComplete()
+
         else:
             self.log.info('device-info-not-loaded-skipping-mib-download')
 
