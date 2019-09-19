@@ -60,6 +60,7 @@ defs = dict(
     accept_atomic_flow=os.environ.get('ACCEPT_ATOMIC_FLOW', True),
     etcd=os.environ.get('ETCD', 'localhost:2379'),
     core_topic=os.environ.get('CORE_TOPIC', 'rwcore'),
+    event_topic=os.environ.get('EVENT_TOPIC', 'voltha.events'),
     interface=os.environ.get('INTERFACE', get_my_primary_interface()),
     instance_id=os.environ.get('INSTANCE_ID', os.environ.get('HOSTNAME', '1')),
     kafka_adapter=os.environ.get('KAFKA_ADAPTER', '192.168.0.20:9092'),
@@ -224,6 +225,13 @@ def parse_args():
                         default=defs['core_topic'],
                         help=_help)
 
+    _help = 'topic of events on the kafka bus'
+    parser.add_argument('-et', '--event_topic',
+                        dest='event_topic',
+                        action='store',
+                        default=defs['event_topic'],
+                        help=_help)
+
     args = parser.parse_args()
 
     # post-processing
@@ -281,6 +289,7 @@ class Main(object):
         self.instance_id = self.args.instance_id + '_' + str(current_time)
 
         self.core_topic = args.core_topic
+        self.event_topic = args.event_topic
         self.listening_topic = args.name
         self.startup_components()
 
@@ -350,6 +359,7 @@ class Main(object):
             self.core_proxy = CoreProxy(
                 kafka_proxy=None,
                 default_core_topic=self.core_topic,
+                default_event_topic=self.event_topic,
                 my_listening_topic=self.listening_topic)
 
             self.adapter_proxy = AdapterProxy(
@@ -360,6 +370,7 @@ class Main(object):
             process_parameters={}
             process_parameters["core_topic"] = self.core_topic
             process_parameters["listening_topic"] = self.listening_topic
+            process_parameters["event_topic"] = self.event_topic
 
             self.adapter = BrcmOpenomciOnuAdapter(
                 core_proxy=self.core_proxy, adapter_proxy=self.adapter_proxy,
