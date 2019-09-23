@@ -24,14 +24,13 @@ from twisted.internet import reactor, task
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python import reflect
 from twisted.protocols import amp
-from ampoule import pool, util
-from ampoule import child
+from ampoule import pool, util, child, main
 
 import structlog
 
 from zope.interface import implementer
 
-from pyvoltha.common.utils.amphelpers import Activate, OMCIDevice, ProcessMessage, OMCIDeviceParam, OMCIAdapterParam, OMCIAdapter
+from adapters.brcm_openomci_onu.amphelpers import Activate, OMCIDevice, ProcessMessage, OMCIDeviceParam, OMCIAdapterParam, OMCIAdapter
 from pyvoltha.adapters.interface import IAdapterInterface
 from pyvoltha.adapters.iadapter import OnuAdapter
 from voltha_protos.adapter_pb2 import Adapter
@@ -146,7 +145,8 @@ class BrcmOpenomciOnuAdapter(object):
             #time.sleep(1+5*len(self.devices_handlers))
             #time.sleep(5)
             if not self.process in self.processes.keys():
-                self.process_device = pool.ProcessPool(OMCIDevice, min=1, max=1, recycleAfter=0)
+                starter = main.ProcessStarter(packages=("twisted",),env={"PYTHONPATH":"/voltha"}) 
+                self.process_device = pool.ProcessPool(OMCIDevice, min=1, max=1, recycleAfter=0, starter=starter)
                 log.debug("starting-openomci-process")
                 self.process_device.start()
                 self.processes[self.process] = self.process_device
