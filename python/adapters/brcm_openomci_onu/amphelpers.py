@@ -103,6 +103,7 @@ class OMCIDevice(child.AMPChild):
     max_devices = 8
     device_queue = []
     devices_processing = {}
+    inter_adapter_message_queue = {}
     @Activate.responder
     def activate(self, device, adapter):
         import structlog
@@ -196,6 +197,15 @@ class OMCIDevice(child.AMPChild):
             yield self.handler[device.id].activate(device)
             self.log.debug("finished-activating")
             self.activated[device.id] = True
+
+            if device.id in self.inter_adapter_message_queue.keys():
+                log.debug("popping-queued-inter-adapter-messages", size=len(self.inter_adapter_message_queue[device.id]))
+                while len(self.inter_adapter_message_queue[device.id]) > 0:
+                    msg = self.inter_adapter_message_queue[device.id].pop()
+                    if msg.header:
+                        if msg.header.to_device_id in self.handler.keys():
+                            self.handler[msg.header.to_device_id].process_inter_adapter_message(msg)
+
         except Exception as err:
             self.log.error("Exception:", err=err)
 #    @ProcessMessage.responder
@@ -224,8 +234,11 @@ class OMCIDevice(child.AMPChild):
             if msg.header:
                 if msg.header.to_device_id in self.activated.keys():
                     if not self.activated[msg.header.to_device_id]:
-                        self.log.debug("process-inter-adapter-message-yield-until-activated")
-                        reactor.callLater(5, self.process_inter_adapter_message, msg)
+                        self.log.debug("process-inter-adapter-message-queue-until-activated")
+                        #reactor.callLater(5, self.process_inter_adapter_message, msg)
+                        if not msg.header.to_device_id in self.inter_adapter_message_queue.keys():
+                            self.inter_adapter_message_queue[msg.header.to_device_id] = []
+                        self.inter_adapter_message_queue[msg.header.to_device_id].append(msg)
                         return None, False 
             if msg.header:
                 if msg.header.to_device_id in self.handler.keys():
