@@ -92,7 +92,8 @@ class BrcmOpenomciOnuAdapter(object):
         self.broadcom_omci = deepcopy(OpenOmciAgentDefaults)
 
         self.broadcom_omci['mib-synchronizer']['state-machine'] = BrcmMibSynchronizer
-        #self.broadcom_omci['mib-synchronizer']['database'] = MibDbExternal
+        self.broadcom_omci['mib-synchronizer']['database'] = MibDbVolatileDict
+        self.broadcom_omci['alarm-synchronizer']['database'] = MibDbVolatileDict
         self.broadcom_omci['omci-capabilities']['tasks']['get-capabilities'] = BrcmCapabilitiesTask
         self.broadcom_omci['alarm-synchronizer']['database'] = MibDbVolatileDict
         # Defer creation of omci agent to a lazy init that allows subclasses to override support classes
