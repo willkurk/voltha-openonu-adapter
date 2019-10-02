@@ -195,17 +195,19 @@ class OMCIDevice(child.AMPChild):
 
             self.handler[device.id] = BrcmOpenomciOnuHandler(self.adapterShim, device.id)
             yield self.handler[device.id].activate(device)
-            self.log.debug("finished-activating")
+            self.log.debug("finished-activating", device_id=device.id)
             self.activated[device.id] = True
 
+            
             if device.id in self.inter_adapter_message_queue.keys():
-                log.debug("popping-queued-inter-adapter-messages", size=len(self.inter_adapter_message_queue[device.id]))
+                log.debug("popping-queued-inter-adapter-messages", size=len(self.inter_adapter_message_queue[device.id]), device_id=device.id)
                 while len(self.inter_adapter_message_queue[device.id]) > 0:
                     msg = self.inter_adapter_message_queue[device.id].pop()
                     if msg.header:
                         if msg.header.to_device_id in self.handler.keys():
                             self.handler[msg.header.to_device_id].process_inter_adapter_message(msg)
-
+            else:
+                log.debug("No message queued", device_id=device.id)
         except Exception as err:
             self.log.error("Exception:", err=err)
 #    @ProcessMessage.responder
@@ -222,19 +224,21 @@ class OMCIDevice(child.AMPChild):
             if device.id in self.handler.keys():
                 ofp_port_info = self.handler[device.id].get_ofp_port_info(device, port_no)
                 log.debug('get_ofp_port_info', device_id=device.id, ofp_port_info=ofp_port_info)
-                return ofp_port_info
+                return ofp_port_info, True
+            else:
+                return None, False
         except Exception as err:
             self.log.error("Exception:", err=err)
 
     def process_inter_adapter_message(self, msg):
         try:
             self.log = structlog.get_logger()
-            self.log.debug('process-inter-adapter-message', msg=msg)
+            self.log.debug('process-inter-adapter-message', device_id=msg.header.to_device_id, msg=msg)
             # Unpack the header to know which device needs to handle this message
             if msg.header:
                 if msg.header.to_device_id in self.activated.keys():
                     if not self.activated[msg.header.to_device_id]:
-                        self.log.debug("process-inter-adapter-message-queue-until-activated")
+                        self.log.debug("process-inter-adapter-message-queue-until-activated", device_id=msg.header.to_device_id)
                         #reactor.callLater(5, self.process_inter_adapter_message, msg)
                         if not msg.header.to_device_id in self.inter_adapter_message_queue.keys():
                             self.inter_adapter_message_queue[msg.header.to_device_id] = []
@@ -256,7 +260,9 @@ class OMCIDevice(child.AMPChild):
         try:
             assert len(groups.items) == 0
             if device.id in self.handler.keys():
-                return self.handler[device.id].update_flow_table(device, flows.items)
+                return self.handler[device.id].update_flow_table(device, flows.items), True
+            else:
+                return None, False
         except Exception as err:
             self.log.error("Exception:", err=err)
 

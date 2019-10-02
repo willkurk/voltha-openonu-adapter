@@ -43,7 +43,7 @@ from voltha_protos.inter_container_pb2 import InterContainerMessage
 from pyvoltha.adapters.common.frameio.frameio import hexify
 from pyvoltha.adapters.extensions.omci.openomci_agent import OpenOMCIAgent, OpenOmciAgentDefaults
 from pyvoltha.adapters.extensions.omci.omci_me import *
-from pyvoltha.adapters.extensions.omci.database.mib_db_ext import MibDbExternal
+from pyvoltha.adapters.extensions.omci.database.mib_db_dict import MibDbVolatileDict
 
 from brcm_openomci_onu_handler import BrcmOpenomciOnuHandler
 from omci.brcm_capabilities_task import BrcmCapabilitiesTask
@@ -94,7 +94,7 @@ class BrcmOpenomciOnuAdapter(object):
         self.broadcom_omci['mib-synchronizer']['state-machine'] = BrcmMibSynchronizer
         #self.broadcom_omci['mib-synchronizer']['database'] = MibDbExternal
         self.broadcom_omci['omci-capabilities']['tasks']['get-capabilities'] = BrcmCapabilitiesTask
-
+        self.broadcom_omci['alarm-synchronizer']['database'] = MibDbVolatileDict
         # Defer creation of omci agent to a lazy init that allows subclasses to override support classes
 
     def custom_me_entities(self):
