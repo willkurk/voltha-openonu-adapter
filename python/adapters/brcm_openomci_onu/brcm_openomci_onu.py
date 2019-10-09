@@ -81,9 +81,9 @@ class BrcmOpenomciOnuAdapter(object):
         )
         self.devices_handlers = dict()
         self.process = 1
-        self.max_processes = 4
+        self.max_processes = 32
         self.process_device_count = 0
-        self.process_device_limit = 8
+        self.process_device_limit = 1
         self.processes = {}
         self.process_device = None
         self.device_handler_class = BrcmOpenomciOnuHandler

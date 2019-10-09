@@ -13,6 +13,7 @@ from zope.interface import implementer
 from pyvoltha.adapters.kafka.adapter_request_facade import InterAdapterRequestFacade
 from pyvoltha.adapters.kafka.kafka_inter_container_library import IKafkaMessagingProxy, \
     get_messaging_proxy
+from pyvoltha.common.structlog_setup import setup_logging, update_logging
 import time
 from copy import deepcopy
 import sys
@@ -111,7 +112,10 @@ class OMCIDevice(child.AMPChild):
         #from twisted.python import log as logtwisted
         #logtwisted.startLogging(sys.stdout)
         
-        self.log = structlog.get_logger()
+        self.log = setup_logging(adapter.process_parameters["config"].get("logging", {}),
+                                 "Thread",
+                                 verbosity_adjust=0)
+
         self.log.info("entering-activate-process")
         self.activated[device.id] = False
          
@@ -125,7 +129,10 @@ class OMCIDevice(child.AMPChild):
 
     @inlineCallbacks
     def initAndActivate(self, device, adapter):
-        self.log = structlog.get_logger()
+        #self.log = setup_logging(adapter.process_parameters["config"].get("logging", {}),
+        #                         "Thread",
+        #                         verbosity_adjust=0)
+
         #from adapters.brcm_openomci_onu.brcm_openomci_onu import *
         #from twisted.python import log as logtwisted
         #logtwisted.startLogging(sys.stdout)
@@ -205,7 +212,7 @@ class OMCIDevice(child.AMPChild):
                     msg = self.inter_adapter_message_queue[device.id].pop()
                     if msg.header:
                         if msg.header.to_device_id in self.handler.keys():
-                            self.handler[msg.header.to_device_id].process_inter_adapter_message(msg)
+                            yield self.handler[msg.header.to_device_id].process_inter_adapter_message(msg)
             else:
                 log.debug("No message queued", device_id=device.id)
         except Exception as err:
@@ -232,7 +239,10 @@ class OMCIDevice(child.AMPChild):
 
     def process_inter_adapter_message(self, msg):
         try:
-            self.log = structlog.get_logger()
+            #self.log = setup_logging(adapter.process_parameters["config"].get("logging", {}),
+            #                     "Thread",
+            #                     verbosity_adjust=0)
+
             self.log.debug('process-inter-adapter-message', device_id=msg.header.to_device_id, msg=msg)
             # Unpack the header to know which device needs to handle this message
             if msg.header:

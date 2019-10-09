@@ -371,6 +371,7 @@ class Main(object):
             process_parameters["core_topic"] = self.core_topic
             process_parameters["listening_topic"] = self.listening_topic
             process_parameters["event_topic"] = self.event_topic
+            process_parameters["config"] = self.config
 
             self.adapter = BrcmOpenomciOnuAdapter(
                 core_proxy=self.core_proxy, adapter_proxy=self.adapter_proxy,
